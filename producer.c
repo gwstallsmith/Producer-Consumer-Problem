@@ -1,134 +1,33 @@
+#include "producer.h"
 
-// C program for the above approach
- 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
-#include <sys/mman.h>
-#include <sys/stat.h>        /* For mode constants */
-#include <fcntl.h>           /* For O_* constants */
- 
-// Initialize a mutex to 1
-int mutex = 1;
- 
-// Number of full slots as 0
-int full = 0;
- 
-// Number of empty slots as size
-// of buffer
-int empty = 10, x = 0;
- 
-// Function to produce an item and
-// add it to the buffer
-void producer()
-{
-    // Decrease mutex value by 1
-    --mutex;
- 
-    // Increase the number of full
-    // slots by 1
-    ++full;
- 
-    // Decrease the number of empty
-    // slots by 1
-    --empty;
- 
-    // Item produced
-    x++;
-    printf("\nProducer produces "
-           "item %d",
-           x);
- 
-    // Increase mutex value by 1
-    ++mutex;
-}
- 
-// Function to consume an item and
-// remove it from buffer
-void consumer()
-{
-    // Decrease mutex value by 1
-    --mutex;
- 
-    // Decrease the number of full
-    // slots by 1
-    --full;
- 
-    // Increase the number of empty
-    // slots by 1
-    ++empty;
-    printf("\nConsumer consumes "
-           "item %d",
-           x);
-    x--;
- 
-    // Increase mutex value by 1
-    ++mutex;
-}
- 
-// Driver Code
-int main()
-{
-    int n, i;
-    printf("\n1. Press 1 for Producer"
-           "\n2. Press 2 for Consumer"
-           "\n3. Press 3 for Exit");
- 
-// Using '#pragma omp parallel for'
-// can  give wrong value due to
-// synchronization issues.
- 
-// 'critical' specifies that code is
-// executed by only one thread at a
-// time i.e., only one thread enters
-// the critical section at a given time
-#pragma omp critical
- 
-    for (i = 1; i > 0; i++) {
- 
-        printf("\nEnter your choice:");
-        scanf("%d", &n);
- 
-        // Switch Cases
-        switch (n) {
-        case 1:
- 
-            // If mutex is 1 and empty
-            // is non-zero, then it is
-            // possible to produce
-            if ((mutex == 1)
-                && (empty != 0)) {
-                producer();
-            }
- 
-            // Otherwise, print buffer
-            // is full
-            else {
-                printf("Buffer is full!");
-            }
-            break;
- 
-        case 2:
- 
-            // If mutex is 1 and full
-            // is non-zero, then it is
-            // possible to consume
-            if ((mutex == 1)
-                && (full != 0)) {
-                consumer();
-            }
- 
-            // Otherwise, print Buffer
-            // is empty
-            else {
-                printf("Buffer is empty!");
-            }
-            break;
- 
-        // Exit Condition
-        case 3:
-            exit(0);
-            break;
-        }
+#include <unistd.h>
+#include <semaphore.h>
+
+
+void producer(SharedTable *sTable) {
+    int item = 0; 
+
+    while(1) {
+        item = rand() % 2;     // Produce a data item (Just 1 or 0)
+
+        sem_wait(sTable->empty);        // Wait for an empty index in table
+        sem_wait(sTable->mutex);        // Wait until critical section is open
+
+        sTable->table[sTable->in] = item;               // Add data to shared table
+        sTable->in = (sTable->in + 1) % BUFFER_SIZE;    // Increment input index
+
+        printf("Producer: %d\n", item);     // Display item
+
+        sem_post(sTable->mutex);        // Unlock critical section
+        sem_post(sTable->full);         // Produce until buffer full
+
+        sleep(rand() % 2);      // Sleep for <= 2 seconds so I can view what is happening
     }
 }
+
+
+
