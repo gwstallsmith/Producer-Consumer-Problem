@@ -25,7 +25,7 @@ void producer(SharedTable *sTable) {
         sem_post(sTable->mutex);        // Unlock critical section
         sem_post(sTable->full);         // Produce until buffer full
 
-        sleep(rand() % 2);      // Sleep for <= 2 seconds so I can view what is happening
+        sleep(rand() % 2);      // Sleep for < 2 seconds so I can view what is happening
     }
 }
 
